@@ -1,0 +1,19 @@
+!IF_IF
+data_out            data_out
+valid_o             valid_o
+ready_in            ready_in
+is_branch           is_branch
+pr_update           pr_update
+invalid_instruction invalid_instruction
+invalid_prediction  invalid_prediction
+is_return_in        is_return_in
+is_jumpl            is_jumpl
+old_PC              old_PC
+must_flush          must_flush
+correct_address     correct_address
+current_PC          current_PC
+Hit_cache           Hit_cache
+Miss                Miss
+partial_access      partial_access
+partial_type        partial_type
+fetched_data        fetched_data

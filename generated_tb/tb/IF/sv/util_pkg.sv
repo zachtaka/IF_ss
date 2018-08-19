@@ -12,10 +12,17 @@ parameter int GSH_SIZE = 256;
 parameter int BTB_SIZE = 256;
 
 // TB simulation parameters
-parameter int TRANS_NUM = 100;
-parameter int ICACHE_MISS_RATE = 0;
-parameter int ICACHE_PARTIAL_ACCESS_RATE = 0;
-parameter int ID_NOT_READY_RATE = 0;
+parameter int TRANS_NUM = 100; // Number of transactions that will be sent from to sequencer to the icache driver
+parameter int ICACHE_MISS_RATE = 0; // The rate of misses from the icache driver, valid range:[0,99]
+parameter int ICACHE_PARTIAL_ACCESS_RATE = 0; // The rate of partial access from icache driver, valid range:[0,100]
+parameter int ID_NOT_READY_RATE = 0; // The rate of stall cycle injection from the next pipeline stage, valid range:[0,99]
+parameter int INS_BRANCH_RATE = 25;
+parameter int BACK_BRANCH_RATE = 50;
+parameter int BACK_BRANCH_IS_TAKEN_RATE =75;
+parameter int FORW_BRANCH_IS_TAKEN_RATE = 50;
+// parameter int MIN_BACK_BRANCH_JUMP_RANGE = 0;
+// parameter int MAX_BACK_BRANCH_JUMP_RANGE = 0;
+
 
 
 // TB structure parameters
@@ -25,14 +32,13 @@ parameter int GSH_COUNTER_NUM = 4;
 
 // Structs
 typedef struct packed {
-  logic          valid_jump  ;
-  logic [31 : 0] orig_pc     ;
-  logic [31 : 0] jump_address;
-  logic          jump_taken  ;
-
-  logic          is_comp     ;
-  logic [ 1 : 0] rat_id      ;
-  logic [ 2 : 0] ticket      ;
+    logic          valid_jump  ;
+    logic          jump_taken  ;
+    logic          is_comp     ;
+    logic [ 1 : 0] rat_id      ;
+    logic [31 : 0] orig_pc     ;
+    logic [31 : 0] jump_address;
+    logic [ 2 : 0] ticket      ;
 } predictor_update;
 
 typedef struct packed {

@@ -4,6 +4,7 @@ file delete -force work
 vlib work
 
 vlog -sv ../tb/IF/sv/util_pkg.sv
+vlog -sv ../tb/IF/sv/drivers_pkg.sv
 
 #compile the dut code
 set cmd "vlog -F ../dut/files.f +cover"

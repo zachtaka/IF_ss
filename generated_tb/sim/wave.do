@@ -10,7 +10,10 @@ add wave -noupdate -radix unsigned /top_tb/th/uut/valid_o
 add wave -noupdate -radix unsigned /top_tb/th/uut/ready_in
 add wave -noupdate -divider -height 20 {Predictor Update Interface}
 add wave -noupdate -radix unsigned /top_tb/th/uut/is_branch
-add wave -noupdate -radix unsigned /top_tb/th/uut/pr_update
+add wave -noupdate -radix unsigned /top_tb/th/uut/pr_update.valid_jump
+add wave -noupdate -radix unsigned /top_tb/th/uut/pr_update.jump_taken
+add wave -noupdate -radix unsigned /top_tb/th/uut/pr_update.orig_pc
+add wave -noupdate -radix unsigned /top_tb/th/uut/pr_update.jump_address
 add wave -noupdate -divider -height 20 {Restart Interface}
 add wave -noupdate -radix unsigned /top_tb/th/uut/invalid_instruction
 add wave -noupdate -radix unsigned /top_tb/th/uut/invalid_prediction
@@ -71,7 +74,7 @@ add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/BTB/next_PC_a
 add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/BTB/Hit_b
 add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/BTB/next_PC_b
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {400000 ps} 0}
+WaveRestoreCursors {{Cursor 1} {100140 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 153
 configure wave -valuecolwidth 100
@@ -87,4 +90,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ps} {2173500 ps}
+WaveRestoreZoom {22078 ps} {157922 ps}

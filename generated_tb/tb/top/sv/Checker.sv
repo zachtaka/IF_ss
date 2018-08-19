@@ -31,7 +31,7 @@ class Checker extends uvm_subscriber #(trans);
       gr_packet_[i].data = t.Ins_data[i];
       gr_packet_[i].taken_branch = utils.gsh_read(current_pc_gr);
     end
-    $display("@ %0t ps trans_pointer=%0d data_0=%0d data_1=%0d",$time(),trans_pointer,t.Ins_data[0],t.Ins_data[1]);
+    // $display("@ %0t ps trans_pointer=%0d data_0=%0d data_1=%0d",$time(),trans_pointer,t.Ins_data[0],t.Ins_data[1]);
     // data_out_gr = {gr_packet_[1],gr_packet_[0]};
     // $display("data_out=%0d",data_out_gr);
 

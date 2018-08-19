@@ -44,10 +44,6 @@ interface IF_if();
   logic [1:0]               partial_type;
   logic [FETCH_WIDTH-1:0]   fetched_data;
 
-  // You can insert properties and assertions here
-
-  // You can insert code here by setting if_inc_inside_interface in file IF.tpl
-
 endinterface : IF_if
 
 `endif // IF_IF_SV

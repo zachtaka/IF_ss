@@ -21,31 +21,31 @@ module IF #(
     parameter int BTB_SIZE         = 256)
     //Input List
     (
-    input  logic                                clk,
-    input  logic                                rst_n,
+    input  logic                      clk,
+    input  logic                      rst_n,
     //Output Interface
-    output logic[2*PACKET_SIZE-1:0]             data_out,
-    output logic                                valid_o,
-    input  logic                                ready_in,
+    output logic[2*PACKET_SIZE-1:0]   data_out,
+    output logic                      valid_o,
+    input  logic                      ready_in,
     //Predictor Update Interface
-    input  logic                                is_branch,
-    input  predictor_update                     pr_update,
+    input  predictor_update           pr_update,
     //Restart Interface
-    input  logic                                invalid_instruction,
-    input  logic                                invalid_prediction,
-    input  logic                                is_return_in,
-    input  logic                                is_jumpl,
-    input  logic[PC_BITS-1:0]                   old_PC,
+    input  logic                      is_branch,
+    input  logic                      invalid_instruction,
+    input  logic                      invalid_prediction,
+    input  logic                      is_return_in,
+    input  logic                      is_jumpl,
+    input  logic[PC_BITS-1:0]         old_PC,
     //Flush Interface
-    input  logic                                must_flush,
-    input  logic[PC_BITS-1:0]                   correct_address,
+    input  logic                      must_flush,
+    input  logic[PC_BITS-1:0]         correct_address,
     //ICache Interface
-    output logic    [PC_BITS-1:0]               current_PC,
-    input  logic                                Hit_cache,
-    input  logic                                Miss,
-    input  logic                                partial_access,
-    input  logic            [1:0]               partial_type,
-    input  logic  [FETCH_WIDTH-1:0]             fetched_data
+    output logic    [PC_BITS-1:0]     current_PC,
+    input  logic                      Hit_cache,
+    input  logic                      Miss,
+    input  logic                      partial_access,
+    input  logic            [1:0]     partial_type,
+    input  logic  [FETCH_WIDTH-1:0]   fetched_data
 );
 
     typedef enum logic[1:0] {NONE, LOW, HIGH} override_priority;
@@ -73,7 +73,6 @@ module IF #(
     // assign data_out = half_access? {old_PC_saved, instruction_out} : {current_PC, instruction_out};     // ADD PC 1 & 2
     // assign data_out              = half_access? {current_PC,old_PC_saved, instruction_out} : {current_PC+4,current_PC, instruction_out};
     fetched_packet packet_a, packet_b;
-
     assign data_out              = {packet_b,packet_a};
     assign packet_a.pc           = half_access? old_PC_saved : current_PC;
     assign packet_a.data         = instruction_out[INSTR_BITS-1:0];
@@ -210,8 +209,6 @@ module IF #(
                     current_PC <= saved_PC;
                 end else if(must_flush) begin
                     current_PC <= correct_address;
-                end else if(over_priority==LOW && is_return_fsm) begin
-                    current_PC <= next_PC;
                 end else if(over_priority==LOW) begin
                     current_PC <= saved_PC;
                 end else if(invalid_prediction) begin
@@ -309,4 +306,5 @@ assert property (@(posedge clk) disable iff(!rst_n) partial_access |-> (partial_
 logic [INSTR_BITS-1:0] fetced_data_0, fetced_data_1;
 assign fetced_data_0 = fetched_data[INSTR_BITS-1:0];
 assign fetced_data_1 = fetched_data[2*INSTR_BITS-1:INSTR_BITS];
+
 endmodule

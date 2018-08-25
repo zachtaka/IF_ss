@@ -42,6 +42,18 @@ module GShare #(PC_BITS=32,HISTORY_BITS=2,SIZE=1024) (
 	//create the Line Selector from the PC_in_a bits k-2
 	assign line_selector_a = PC_in_a[SEL_BITS : 1];
 	assign line_selector_b = PC_in_b[SEL_BITS : 1];
+	initial begin
+		forever begin 
+			if(PC_in_a==692) begin
+				$display("[ DUT  ] @ %0t ps read counter, pc=%0d, line=%0d, cnt_id=%0d, is_taken=%b, cnt_value=%0d",$time(),PC_in_a,line_selector_a,counter_selector_a,is_Taken_out_a,retrieved_counter_a);
+			end
+			if(PC_in_b==692) begin
+				$display("[ DUT  ] @ %0t ps read counter, pc=%0d, line=%0d, cnt_id=%0d, is_taken=%b, cnt_value=%0d",$time(),PC_in_b,line_selector_b,counter_selector_b,is_Taken_out_b,retrieved_counter_b);
+			end
+			@(negedge clk);
+		end
+	end
+
 	//create the Counter Selector (PC XOR global history)
 	assign counter_selector_a = gl_history ^ PC_in_a[HISTORY_BITS : 1];
 	assign counter_selector_b = gl_history ^ PC_in_b[HISTORY_BITS : 1];

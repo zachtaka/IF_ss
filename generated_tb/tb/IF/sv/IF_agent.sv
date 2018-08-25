@@ -27,6 +27,10 @@ class IF_agent extends uvm_agent;
   IF_config       m_config;
   IF_sequencer_t  m_sequencer;
   icache_driver   m_driver;
+  ready_driver    m_ready_driver;
+  branch_resolve_driver m_branch_resolve_driver;
+  restart_driver  m_restart_driver;
+  flush_driver    m_flush_driver;
   IF_monitor      m_monitor;
 
   local int m_is_active = -1;
@@ -65,6 +69,10 @@ function void IF_agent::build_phase(uvm_phase phase);
   begin
     m_driver    = icache_driver ::type_id::create("m_driver", this);
     m_sequencer = IF_sequencer_t::type_id::create("m_sequencer", this);
+    m_ready_driver = ready_driver::type_id::create("m_ready_driver", this);
+    m_branch_resolve_driver = branch_resolve_driver::type_id::create("m_branch_resolve_driver", this);
+    m_restart_driver = restart_driver::type_id::create("m_restart_driver", this);
+    m_flush_driver = flush_driver::type_id::create("m_flush_driver", this);
   end
 
   // You can insert code here by setting agent_append_to_build_phase in file IF.tpl
@@ -83,6 +91,10 @@ function void IF_agent::connect_phase(uvm_phase phase);
   begin
     m_driver.seq_item_port.connect(m_sequencer.seq_item_export);
     m_driver.vif = m_config.vif;
+    m_ready_driver.vif = m_config.vif;
+    m_branch_resolve_driver.vif = m_config.vif;
+    m_restart_driver.vif = m_config.vif;
+    m_flush_driver.vif = m_config.vif;
   end
 
   // You can insert code here by setting agent_append_to_connect_phase in file IF.tpl

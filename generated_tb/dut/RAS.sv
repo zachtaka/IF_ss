@@ -28,7 +28,7 @@ module RAS #(PC_BITS=32,SIZE=32) (
     logic [SIZE-1:0][PC_BITS-2:0] Buffer;
     logic [CON_BITS-1 : 0] head, tail, data_pointer, checkpointed_TOS;
     logic [CON_BITS   : 0] checkpoint_pushed, checkpoint_out;
-    logic [ PC_BITS-2 : 0] data_out         ;
+    logic [PC_BITS-2  : 0] data_out         ;
     logic                  lastPush,  checkpoint_valid, checkpointed_lastPush;
 
     localparam int RAS_SIZE = $bits(Buffer) + 2*$bits(head) + 4*(CON_BITS+1);

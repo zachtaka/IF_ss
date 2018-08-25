@@ -11,6 +11,10 @@
            <imp if_type = "uvm_analysis_imp" txn_type = "anonymous"> 
               analysis_imp 
            </imp> 
+  
+           <imp if_type = "uvm_analysis_imp_pr" txn_type = "anonymous"> 
+              pr 
+           </imp> 
         </instance> 
   
   
@@ -21,6 +25,16 @@
               analysis_port 
               <connection>  uvm_test_top.m_env.m_IF_coverage.analysis_imp  </connection> 
            </port> 
+  
+           <instance type=" branch_resolve_driver "> 
+              m_branch_resolve_driver 
+  
+              <port if_type = "uvm_analysis_port" txn_type = "anonymous"> 
+                 pr_update_port 
+                 <connection>  uvm_test_top.m_env.Checker_h.pr  </connection> 
+              </port> 
+           </instance> 
+  
   
            <instance type=" icache_driver "> 
               m_driver 
@@ -41,6 +55,11 @@
            </instance> 
   
   
+           <instance type=" flush_driver "> 
+              m_flush_driver 
+           </instance> 
+  
+  
            <instance type=" IF_monitor "> 
               m_monitor 
   
@@ -48,6 +67,16 @@
                  analysis_port 
                  <connection>  uvm_test_top.m_env.m_IF_agent.analysis_port  </connection> 
               </port> 
+           </instance> 
+  
+  
+           <instance type=" ready_driver "> 
+              m_ready_driver 
+           </instance> 
+  
+  
+           <instance type=" restart_driver "> 
+              m_restart_driver 
            </instance> 
   
   

@@ -11,23 +11,7 @@ class icache_driver extends uvm_driver #(trans);
   function new(string name, uvm_component parent);
     super.new(name, parent);
     icache_port = new("icache_port",this);
-
-    // Instruction mapping
-    $display("--------------------\nPC_Ins_mapping_array: \n");
-    for (int i = 0; i < TRANS_NUM*INSTR_COUNT*2; i++) begin
-      PC_Ins_mapping_array[i].is_branch = ($urandom_range(0,99)<INS_BRANCH_RATE);
-      PC_Ins_mapping_array[i].orig_pc = i*(PC_BITS/8);
-      if(PC_Ins_mapping_array[i].is_branch) begin
-        PC_Ins_mapping_array[i].backward_jump = ($urandom_range(0,99)<BACK_BRANCH_RATE)&(i>8);
-        if(PC_Ins_mapping_array[i].backward_jump) begin
-          PC_Ins_mapping_array[i].target_pc = PC_Ins_mapping_array[i].orig_pc - $urandom_range(4,8)*4;
-        end else begin 
-          PC_Ins_mapping_array[i].target_pc = PC_Ins_mapping_array[i].orig_pc + $urandom_range(4,8)*4;
-        end
-      end
-      $display("PC_Ins_mapping_array[%2d]: is_branch=%0b backward_jump=%0b orig_pc=%0d target_pc=%0d",i,PC_Ins_mapping_array[i].is_branch,PC_Ins_mapping_array[i].backward_jump,PC_Ins_mapping_array[i].orig_pc,PC_Ins_mapping_array[i].target_pc);
-    end
-    $display("--------------------\n");
+    initialize_Instructions();
   endfunction
 
   function void reset();
@@ -41,6 +25,7 @@ class icache_driver extends uvm_driver #(trans);
     forever begin 
       seq_item_port.get_next_item(req);
       icache_port.write(req);
+      vif.trans_id_dbg <= req.trans_id_dbg;
       
       while($urandom_range(0,99)<ICACHE_MISS_RATE) begin
         // Miss
@@ -58,6 +43,7 @@ class icache_driver extends uvm_driver #(trans);
       vif.partial_access <= 0;
       vif.partial_type <= 0;
       vif.fetched_data <= req.Ins_data;
+
       @(posedge vif.clk);
 
       while (!vif.ready_in && vif.valid_o) begin 
@@ -81,16 +67,23 @@ class icache_driver extends uvm_driver #(trans);
   endtask
 
   task predictor_update_driver();
+    int pc_pointers[$];
     int credits = 0;
     int pc_pointer = 0;
-
+    int pc_1, pc_2;
     forever begin 
-      // credits counter = Ins passed through IF stage 
+      // credits counter = Ins passed through IF stage to ID stage
       if(vif.valid_o && vif.ready_in) begin
         credits = credits + INSTR_COUNT;
+        pc_1 = vif.current_PC;
+        pc_2 = vif.current_PC + 4;
+        pc_pointers.push_back(pc_1);
+        pc_pointers.push_back(pc_2);
       end
 
       if (credits>0) begin  // while dn tha eprepe? kai na mporw na stelnw 2 pr_update per cycle? #ask
+        assert(pc_pointers.size()>0) else $fatal("Popping on empty queue: pc_pointers");
+        pc_pointer = (pc_pointers.pop_front()/4);
         if(PC_Ins_mapping_array[pc_pointer].is_branch) begin
           vif.is_branch = 1;
           vif.pr_update.valid_jump = 1;
@@ -108,8 +101,6 @@ class icache_driver extends uvm_driver #(trans);
           vif.pr_update.jump_address = 0;
           vif.pr_update.jump_taken = 0;
         end
-
-        pc_pointer++;
         credits--;
       end else begin 
         vif.is_branch = 0;
@@ -124,23 +115,100 @@ class icache_driver extends uvm_driver #(trans);
   endtask
 
   task flush_driver();
+    int pc_pointers[$];
+    int credits = 0;
+    int pc_pointer = 0;
+    int pc_1, pc_2;
+
     forever begin 
-      //Flush Interface
-      vif.must_flush <= 0;
-      vif.correct_address <= 0;
+      if(vif.valid_o && vif.ready_in) begin
+        pc_1 = vif.current_PC/4;
+        pc_2 = (vif.current_PC+4)/4;
+        if(PC_Ins_mapping_array[pc_1].is_branch) begin
+          credits++;
+        end
+        if(PC_Ins_mapping_array[pc_2].is_branch) begin
+          credits++;
+        end
+      end
+
+      if(($urandom_range(0,99)<FLUSH_RATE)&&(credits>0)) begin
+        vif.must_flush <= 1;
+        vif.correct_address <= $urandom_range(0,vif.current_PC/4)*4;
+        credits=0;
+      end else if(credits>0) begin
+        vif.must_flush <= 0;
+        vif.correct_address <= 0;
+        credits--;
+      end else begin 
+        vif.must_flush <= 0;
+        vif.correct_address <= 0;
+      end
+        
       @(posedge vif.clk);
     end
   endtask
 
   task restart_driver();
+    int last_pc;
+    int credits = 0;
+    int fnc_if  = 0; // functions in flight (functions called but not returned yet)
+    bit invalid_Ins, invalid_prediction, function_call, function_return;
     forever begin 
-      //Restart Interface
-      vif.invalid_instruction <= 0;
-      vif.invalid_prediction <= 0;
-      vif.is_return_in <= 0;
-      vif.is_jumpl <= 0;
-      vif.old_PC <= 0;
+
+      if(vif.valid_o && vif.ready_in) begin
+        // credits = Instructions at ID stage
+        credits = credits + 2;
+        last_pc = vif.current_PC;
+      end
+
+      // 
+      invalid_Ins         = ($urandom_range(0,99)<INVALID_INS_RATE)        &(credits>0);
+      invalid_prediction  = ($urandom_range(0,99)<INVALID_PREDICTION_RATE) &(credits>0);
+      function_call       = ($urandom_range(0,99)<FUNCTION_CALL_RATE)      &(credits>0);
+      function_return     = ($urandom_range(0,99)<FUNCTION_RETURN_RATE)    &(credits>0) &(fnc_if>0);
+
+      if(invalid_Ins) begin
+        vif.invalid_instruction <= 1;
+        vif.invalid_prediction <= 0;
+        vif.is_return_in <= 0;
+        vif.is_jumpl <= 0;
+        // set as old PC one of the two Instructions fetched at the ID stage
+        vif.old_PC <=  last_pc + $urandom_range(0,1)*4;
+      end else if(invalid_prediction) begin
+        vif.invalid_instruction <= 0;
+        vif.invalid_prediction <= 1;
+        vif.is_return_in <= 0;
+        vif.is_jumpl <= 0;
+        // set as old PC one of the two Instructions fetched at the ID stage
+        vif.old_PC <= last_pc + $urandom_range(0,1)*4;
+      end else if(function_call) begin
+        vif.invalid_instruction <= 0;
+        vif.invalid_prediction <= 0;
+        vif.is_return_in <= 0;
+        vif.is_jumpl <= 1;
+        // set as old PC one of the two Instructions fetched at the ID stage
+        vif.old_PC <= last_pc + $urandom_range(0,1)*4;
+        fnc_if ++;
+      end else if(function_return) begin
+        vif.invalid_instruction <= 0;
+        vif.invalid_prediction <= 0;
+        vif.is_return_in <= 1;
+        vif.is_jumpl <= 0;
+        vif.old_PC <= 0;
+        fnc_if --;
+      end else begin 
+        vif.invalid_instruction <= 0;
+        vif.invalid_prediction <= 0;
+        vif.is_return_in <= 0;
+        vif.is_jumpl <= 0;
+        vif.old_PC <= 0;
+      end
+
+      if(credits>0) credits = 0;
       @(posedge vif.clk);
+
+      
     end
   endtask
 

@@ -39,6 +39,7 @@ class Checker_utils;
     gshare_array[line][counter_id*2+:2] = update_counter_value(is_taken, gshare_array[line][counter_id*2+:2]);
     //update gsh history
     gsh_history = {is_taken, gsh_history[GSH_HISTORY_BITS-1:1]};
+    // if(line==58)$display("[GSHARE] @ %0t ps updt counter, pc=%0d, line=%0d, cnt_id=%0d, is_taken=%0d, cnt_value=%0d",$time(),pc,line,counter_id,is_taken,gshare_array[line][counter_id*2+:2]);
   endfunction 
 
   function bit gsh_read(input int pc);
@@ -51,6 +52,8 @@ class Checker_utils;
     counter_value = gshare_array[line][(counter_id*2)+:2];
 
     is_taken = counter_value>1;
+
+    if(pc==692)$display("[GSHARE] @ %0t ps read counter, pc=%0d, line=%0d, cnt_id=%0d, is_taken=%0d, cnt_value=%0d",$time(),pc,line,counter_id,is_taken,counter_value);
     return is_taken;
   endfunction
 
@@ -73,7 +76,7 @@ class Checker_utils;
     line = pc[$clog2(BTB_SIZE):1];
     btb.target_pc = btb_array[line].target_pc;
     btb.hit = (pc==btb_array[line].orig_pc)&(btb_array[line].valid);
-
+    $display("[BTB] @ %0t ps pc=%0d btb_hit=%b",$time(),pc,btb.hit);
     return btb;
   endfunction
 
@@ -82,12 +85,16 @@ class Checker_utils;
   // Return Address Stack (RAS)
   */
   function void ras_push(input int pc);
-    ras_queue.push_back(pc);
+    if(ras_queue.size()==RAS_DEPTH) ras_queue = ras_queue[0:$-1]; // if overflow delete last item
+    ras_queue.push_front(pc);
+    // $display("[RAS] pushed:%0d, queue_size(after push)=%0d, queue=%p",pc,ras_queue.size(),ras_queue);
   endfunction
 
   function bit[PC_BITS-1:0] ras_pop();
     bit[PC_BITS-1:0] return_pc; 
+    assert(ras_queue.size()>0) else $fatal("popping from empty ras?");
     return_pc = ras_queue.pop_front();
+    // $display("[RAS] popped:%0d, queue_size(after pop)=%0d, queue=%p",return_pc,ras_queue.size(),ras_queue);
     return return_pc;
   endfunction
 

@@ -44,6 +44,15 @@ interface IF_if();
   logic [1:0]               partial_type;
   logic [FETCH_WIDTH-1:0]   fetched_data;
 
+  int                       trans_id_dbg;
+
+
+  // Tb structure assertion: Check that current pc point to a mapped Instruction of icache driver
+  property pc_out_of_Ins_map_bounds;
+    @(posedge clk) disable iff (!rst_n) 
+    1'b1 |-> (current_PC < TRANS_NUM*INSTR_COUNT*2);
+  endproperty
+
 endinterface : IF_if
 
 `endif // IF_IF_SV

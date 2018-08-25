@@ -8,22 +8,8 @@ add wave -noupdate -radix unsigned -childformat {{/top_tb/th/uut/packet_a.pc -ra
 add wave -noupdate -radix unsigned -childformat {{/top_tb/th/uut/packet_b.pc -radix unsigned} {/top_tb/th/uut/packet_b.data -radix unsigned} {/top_tb/th/uut/packet_b.taken_branch -radix unsigned}} -expand -subitemconfig {/top_tb/th/uut/packet_b.pc {-height 15 -radix unsigned} /top_tb/th/uut/packet_b.data {-height 15 -radix unsigned} /top_tb/th/uut/packet_b.taken_branch {-height 15 -radix unsigned}} /top_tb/th/uut/packet_b
 add wave -noupdate -radix unsigned /top_tb/th/uut/valid_o
 add wave -noupdate -radix unsigned /top_tb/th/uut/ready_in
-add wave -noupdate -divider -height 20 {Predictor Update Interface}
-add wave -noupdate -radix unsigned /top_tb/th/uut/is_branch
-add wave -noupdate -radix unsigned /top_tb/th/uut/pr_update.valid_jump
-add wave -noupdate -radix unsigned /top_tb/th/uut/pr_update.jump_taken
-add wave -noupdate -radix unsigned /top_tb/th/uut/pr_update.orig_pc
-add wave -noupdate -radix unsigned /top_tb/th/uut/pr_update.jump_address
-add wave -noupdate -divider -height 20 {Restart Interface}
-add wave -noupdate -radix unsigned /top_tb/th/uut/invalid_instruction
-add wave -noupdate -radix unsigned /top_tb/th/uut/invalid_prediction
-add wave -noupdate -radix unsigned /top_tb/th/uut/is_return_in
-add wave -noupdate -radix unsigned /top_tb/th/uut/is_jumpl
-add wave -noupdate -radix unsigned /top_tb/th/uut/old_PC
-add wave -noupdate -divider -height 20 {Flush Interface}
-add wave -noupdate -radix unsigned /top_tb/th/uut/must_flush
-add wave -noupdate -radix unsigned /top_tb/th/uut/correct_address
 add wave -noupdate -divider -height 20 {ICache Interface}
+add wave -noupdate -radix unsigned /top_tb/th/IF_if_0/trans_id_dbg
 add wave -noupdate -radix unsigned /top_tb/th/uut/current_PC
 add wave -noupdate -radix unsigned /top_tb/th/uut/Hit_cache
 add wave -noupdate -radix unsigned /top_tb/th/uut/Miss
@@ -32,6 +18,22 @@ add wave -noupdate -radix unsigned /top_tb/th/uut/partial_type
 add wave -noupdate -radix unsigned /top_tb/th/uut/fetched_data
 add wave -noupdate -radix unsigned /top_tb/th/uut/fetced_data_0
 add wave -noupdate -radix unsigned /top_tb/th/uut/fetced_data_1
+add wave -noupdate -divider -height 20 {Restart Interface}
+add wave -noupdate -radix unsigned /top_tb/th/uut/invalid_instruction
+add wave -noupdate -radix unsigned /top_tb/th/uut/invalid_prediction
+add wave -noupdate -radix unsigned /top_tb/th/uut/is_return_in
+add wave -noupdate -radix unsigned /top_tb/th/uut/is_jumpl
+add wave -noupdate -radix unsigned /top_tb/th/uut/old_PC
+add wave -noupdate /top_tb/th/uut/over_priority
+add wave -noupdate -divider -height 20 {Predictor Update Interface}
+add wave -noupdate -radix unsigned /top_tb/th/uut/is_branch
+add wave -noupdate -radix unsigned /top_tb/th/uut/pr_update.valid_jump
+add wave -noupdate -radix unsigned /top_tb/th/uut/pr_update.jump_taken
+add wave -noupdate -radix unsigned /top_tb/th/uut/pr_update.orig_pc
+add wave -noupdate -radix unsigned /top_tb/th/uut/pr_update.jump_address
+add wave -noupdate -divider -height 20 {Flush Interface}
+add wave -noupdate -radix unsigned /top_tb/th/uut/must_flush
+add wave -noupdate -radix unsigned /top_tb/th/uut/correct_address
 add wave -noupdate -divider Predictor
 add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/must_flush
 add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/is_branch
@@ -73,8 +75,19 @@ add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/BTB/Hit_a
 add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/BTB/next_PC_a
 add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/BTB/Hit_b
 add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/BTB/next_PC_b
+add wave -noupdate -divider RAS
+add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/RAS/clk
+add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/RAS/rst_n
+add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/RAS/must_flush
+add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/RAS/is_branch
+add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/RAS/branch_resolved
+add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/RAS/Pop
+add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/RAS/Push
+add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/RAS/new_entry
+add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/RAS/PC_out
+add wave -noupdate -radix unsigned /top_tb/th/uut/Predictor/RAS/is_empty
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {100140 ps} 0}
+WaveRestoreCursors {{Cursor 1} {420641 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 153
 configure wave -valuecolwidth 100
@@ -90,4 +103,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {22078 ps} {157922 ps}
+WaveRestoreZoom {0 ps} {556500 ps}

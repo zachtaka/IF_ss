@@ -92,7 +92,7 @@ function void top_env::connect_phase(uvm_phase phase);
   m_IF_agent.m_driver.icache_port.connect(Checker_h.analysis_export);
 
   // You can insert code here by setting top_env_append_to_connect_phase in file common.tpl
-
+  m_IF_agent.m_branch_resolve_driver.pr_update_port.connect(Checker_h.pr);
 endfunction : connect_phase
 
 

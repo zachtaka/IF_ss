@@ -24,7 +24,6 @@ class icache_driver extends uvm_driver #(trans);
   task icache_driver();
     forever begin 
       seq_item_port.get_next_item(req);
-      icache_port.write(req);
       vif.trans_id_dbg <= req.trans_id_dbg;
       
       while($urandom_range(0,99)<ICACHE_MISS_RATE) begin
@@ -36,6 +35,7 @@ class icache_driver extends uvm_driver #(trans);
         // vif.fetched_data <= $random;
         @(posedge vif.clk);
       end
+      icache_port.write(req);
 
       // Hit
       vif.Hit_cache <= 1;
@@ -49,7 +49,7 @@ class icache_driver extends uvm_driver #(trans);
       while (!vif.ready_in && vif.valid_o) begin 
         @(posedge vif.clk);
       end
-
+      trans_pointer_synced++;
       seq_item_port.item_done();
     end
   endtask

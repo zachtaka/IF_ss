@@ -78,12 +78,12 @@ module IF #(
     assign packet_a.pc           = half_access? old_PC_saved : current_PC;
     assign packet_a.data         = instruction_out[INSTR_BITS-1:0];
     assign packet_a.taken_branch = half_access ? taken_branch_saved : taken_branch_1;
-    assign packet_b.pc           = half_access? current_PC : current_PC+4;
+    assign packet_b.pc           = half_access ? current_PC : current_PC+4;
     assign packet_b.data         = instruction_out[2*INSTR_BITS-1:INSTR_BITS];
-    assign packet_b.taken_branch = taken_branch_2;
+    assign packet_b.taken_branch = half_access ? taken_branch_1 : taken_branch_2;
     // assign valid_o  = Hit & (over_priority==NONE) & ~(is_return_in | is_return_fsm) & ~invalid_prediction & ~must_flush & ~invalid_instruction & ~taken_branch_1;
-    assign valid_o = half_access ?  Hit & (over_priority==NONE) & ~(is_return_in | is_return_fsm) & ~invalid_prediction & ~must_flush & ~invalid_instruction :
-                                    Hit & (over_priority==NONE) & ~(is_return_in | is_return_fsm) & ~invalid_prediction & ~must_flush & ~invalid_instruction & ~taken_branch_1;
+    assign valid_o = half_access ? Hit & (over_priority==NONE) & ~(is_return_in | is_return_fsm) & ~invalid_prediction & ~must_flush & ~invalid_instruction :
+    Hit & (over_priority==NONE) & ~(is_return_in | is_return_fsm) & ~invalid_prediction & ~must_flush & ~invalid_instruction & ~taken_branch_1;
 
     //Intermidiate Signals
     assign new_entry = pr_update.valid_jump;
@@ -200,40 +200,55 @@ module IF #(
         end
     end
     // PC Address Management
+    int orig_dbg;
     always_ff @(posedge clk or negedge rst_n) begin : PCManagement
         if(!rst_n) begin
             current_PC <= 0;
+            orig_dbg <= 0;
         end else begin
             // Normal Operation
             if(Hit_cache) begin
                 if(over_priority==HIGH) begin
                     current_PC <= saved_PC;
+                    orig_dbg <= 1;
                 end else if(must_flush) begin
                     current_PC <= correct_address;
+                    orig_dbg <= 2;
                 end else if(over_priority==LOW && is_return_fsm) begin
                     current_PC <= next_PC;
+                    orig_dbg <= 3;
                 end else if(over_priority==LOW) begin
                     current_PC <= saved_PC;
+                    orig_dbg <= 4;
                 end else if(invalid_prediction) begin
                     current_PC <= old_PC;
+                    orig_dbg <= 5;
                 end else if (invalid_instruction) begin
                     current_PC <= old_PC;
+                    orig_dbg <= 6;
                 end else if (is_return_in) begin
-                    current_PC <= next_PC; 
+                    current_PC <= next_PC;
+                    orig_dbg <= 7; 
                 end else if(partial_access && partial_type== 1) begin
                     current_PC <= current_PC +2;
+                    orig_dbg <= 8;
                 end else if(taken_branch_1) begin
                     current_PC <= next_PC;
+                    orig_dbg <= 9;
                 end else if (partial_access && partial_type== 2) begin
                     current_PC <= current_PC +4;
+                    orig_dbg <= 10;
                 end else if (partial_access && partial_type== 3) begin
                     current_PC <= current_PC +6;
+                    orig_dbg <= 11;
                 end else if (ready_in && !half_access) begin
                     // current_PC <= next_PC;
                     current_PC <= taken_branch_2 ? next_PC_2 : next_PC;
+                    orig_dbg <= 12;
                 end else if (ready_in && half_access) begin
                     // current_PC <= next_PC_saved;
-                    current_PC <= taken_branch_2 ? next_PC_2 : next_PC_saved;
+                    current_PC <= taken_branch_1 ? next_PC : next_PC_saved;
+                    orig_dbg <= 13;
                 end
             end 
         end
@@ -306,7 +321,5 @@ assert property (@(posedge clk) disable iff(!rst_n) partial_access |-> 1'b1) els
 assert property (@(posedge clk) disable iff(!rst_n) must_flush |-> !valid_o) else $error("IF - Error, wrong instruction injected in the pipeline");
 assert property (@(posedge clk) disable iff(!rst_n) partial_access |-> (partial_type==2'b10)) else $error("IF - Dummy, wrong partial access type");
 
-logic [INSTR_BITS-1:0] fetced_data_0, fetced_data_1;
-assign fetced_data_0 = fetched_data[INSTR_BITS-1:0];
-assign fetced_data_1 = fetched_data[2*INSTR_BITS-1:INSTR_BITS];
+
 endmodule

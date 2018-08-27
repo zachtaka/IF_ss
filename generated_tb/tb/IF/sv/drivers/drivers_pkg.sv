@@ -1,6 +1,6 @@
 package drivers_pkg;
   import util_pkg::*;
-
+  int trans_pointer_synced;
   typedef struct packed{
     bit is_branch;
     bit backward_jump;
@@ -11,10 +11,11 @@ package drivers_pkg;
 
 	PC_Ins_mapping_entry [TRANS_NUM*INSTR_COUNT*2-1:0] PC_Ins_mapping_array;
 
-
+  int fl;
 	function void initialize_Instructions();
+    fl = $fopen("C:/Users/zacarry/Desktop/Verilog/projects/IF_SS/test/generated_tb/sim/Ins_map.txt","w");
 		// Instruction mapping
-    $display("--------------------\nPC_Ins_mapping_array: \n");
+    $fwrite(fl,"--------------------\nPC_Ins_mapping_array: \n");
     for (int i = 0; i < TRANS_NUM*INSTR_COUNT*2; i++) begin
       PC_Ins_mapping_array[i].is_branch = ($urandom_range(0,99)<INS_BRANCH_RATE);
       PC_Ins_mapping_array[i].function_call = ($urandom_range(0,99)<FUNCTION_CALL_RATE)&(~PC_Ins_mapping_array[i].is_branch);
@@ -27,9 +28,9 @@ package drivers_pkg;
           PC_Ins_mapping_array[i].target_pc = PC_Ins_mapping_array[i].orig_pc + $urandom_range(4,8)*4;
         end
       end
-      $display("PC_Ins_mapping_array[%2d]: br=%0b fnc=%0b b_jump=%0b or_pc=%0d tr_pc=%0d",i,PC_Ins_mapping_array[i].is_branch,PC_Ins_mapping_array[i].function_call,PC_Ins_mapping_array[i].backward_jump,PC_Ins_mapping_array[i].orig_pc,PC_Ins_mapping_array[i].target_pc);
+      $fwrite(fl,"PC_Ins_mapping_array[%2d]: br=%0b fnc=%0b b_jump=%0b or_pc=%0d tr_pc=%0d\n",i,PC_Ins_mapping_array[i].is_branch,PC_Ins_mapping_array[i].function_call,PC_Ins_mapping_array[i].backward_jump,PC_Ins_mapping_array[i].orig_pc,PC_Ins_mapping_array[i].target_pc);
     end
-    $display("--------------------\n");
+    $fwrite(fl,"\n--------------------\n");
 	endfunction 
 
 

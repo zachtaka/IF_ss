@@ -53,6 +53,19 @@ module BTB #(PC_BITS=32,SIZE=1024) (
 
     assign read_addresses[0] = line_selector_a;
     assign read_addresses[1] = line_selector_b;
+    int fl;
+    initial begin 
+        fl = $fopen("C:/Users/zacarry/Desktop/Verilog/projects/IF_SS/test/generated_tb/sim/btb_out.txt","w");
+        forever begin 
+            if(Wr_En) begin
+                if(Orig_PC==1928) begin
+                    $fwrite(fl,"[BTB update] @ %0t ps orig_pc=%0d, line=%0d target_pc=%0d\n",$time(),Orig_PC,line_write_selector,Target_PC);
+                end
+            end
+            @(negedge clk);
+        end
+
+    end
     SRAM #(.SIZE        (SIZE),
            .DATA_WIDTH  (2*PC_BITS),
            .RD_PORTS    (2),
@@ -72,17 +85,20 @@ module BTB #(PC_BITS=32,SIZE=1024) (
     assign next_PC_a        = retrieved_data_a[0 +: PC_BITS];
     assign next_PC_b        = retrieved_data_b[0 +: PC_BITS];
 
+    logic[PC_BITS-1:0] orig_pc_a, orig_pc_b;
 	always_comb begin : HitOutputA		
-		//Calculate Hit_a signal										
-		if (retrieved_data_a[PC_BITS +: PC_BITS]==PC_in_a) begin								
+		//Calculate Hit_a signal	
+        orig_pc_a = retrieved_data_a[PC_BITS +: PC_BITS];
+		if (orig_pc_a==PC_in_a) begin								
 			Hit_a = Validity[line_selector_a];
 		end else begin
 			Hit_a = 0;
 		end
 	end
     always_comb begin : HitOutputB       
-        //Calculate Hit_a signal                                        
-        if (retrieved_data_b[PC_BITS +: PC_BITS]==PC_in_b) begin                                
+        //Calculate Hit_a signal     
+        orig_pc_b = retrieved_data_b[PC_BITS +: PC_BITS];
+        if (orig_pc_b==PC_in_b) begin                                
             Hit_b = Validity[line_selector_b];
         end else begin
             Hit_b = 0;

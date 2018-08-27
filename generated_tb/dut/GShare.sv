@@ -43,12 +43,17 @@ module GShare #(PC_BITS=32,HISTORY_BITS=2,SIZE=1024) (
 	assign line_selector_a = PC_in_a[SEL_BITS : 1];
 	assign line_selector_b = PC_in_b[SEL_BITS : 1];
 	initial begin
+
 		forever begin 
-			if(PC_in_a==692) begin
-				$display("[ DUT  ] @ %0t ps read counter, pc=%0d, line=%0d, cnt_id=%0d, is_taken=%b, cnt_value=%0d",$time(),PC_in_a,line_selector_a,counter_selector_a,is_Taken_out_a,retrieved_counter_a);
+			if(PC_in_a==228) begin
+				$display("[ DUT  ] @ %0t ps read counter, pc=%0d, line=%0d, cnt_id=%0d, is_taken=%b, cnt_value=%0d, history=%0d",$time(),PC_in_a,line_selector_a,counter_selector_a,is_Taken_out_a,retrieved_counter_a,gl_history);
 			end
-			if(PC_in_b==692) begin
-				$display("[ DUT  ] @ %0t ps read counter, pc=%0d, line=%0d, cnt_id=%0d, is_taken=%b, cnt_value=%0d",$time(),PC_in_b,line_selector_b,counter_selector_b,is_Taken_out_b,retrieved_counter_b);
+			if(PC_in_b==228) begin
+				$display("[ DUT  ] @ %0t ps read counter, pc=%0d, line=%0d, cnt_id=%0d, is_taken=%b, cnt_value=%0d, history=%0d",$time(),PC_in_b,line_selector_b,counter_selector_b,is_Taken_out_b,retrieved_counter_b,gl_history);
+			end
+
+			if(Wr_En&(Orig_PC==672)) begin
+				$display("[ DUT  ] @ %0t ps updt counter, pc=%0d, line=%0d, cnt_id=%0d, is_taken=%b",$time(),Orig_PC,write_line_selector,write_counter_selector,is_Taken);
 			end
 			@(negedge clk);
 		end

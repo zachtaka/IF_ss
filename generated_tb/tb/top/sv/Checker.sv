@@ -17,7 +17,7 @@ class Checker extends uvm_subscriber #(trans);
   output_array_s [TRANS_NUM-1:0] gr_array, dut_array;
   int trans_pointer=0;
   // int trans_pointer_synced = -1; // transaction pointer synced with driver
-  predictor_update pr_queue[$];
+  
   // Constructor
   function new(string name, uvm_component parent);
     super.new(name,parent);
@@ -28,14 +28,15 @@ class Checker extends uvm_subscriber #(trans);
   endfunction
 
   function void write_pr(input predictor_update t);
-    // if(t.orig_pc==672)$display("[CHECKER] @ %0t ps predictor update=%p",$time(),t);
-    // pr_queue.push_back(t);
+    
+    utils.pr_queue.push_back(t);
+    // utils.push_pr_update(t);
     // while ((pr_queue.size()>0)) begin 
         // pr_trans = pr_queue.pop_front();
-        if(t.valid_jump) begin
-            utils.gsh_update(t.orig_pc, t.jump_taken);
-            utils.btb_update(t.orig_pc, t.jump_address);
-        end
+        // if(t.valid_jump) begin
+        //     utils.gsh_update(t.orig_pc, t.jump_taken);
+        //     utils.btb_update(t.orig_pc, t.jump_address);
+        // end
     // end
   endfunction
 
@@ -56,6 +57,7 @@ class Checker extends uvm_subscriber #(trans);
   bit btb_hit;
   btb_read_s btb_read, btb;
   bit fetch_second_ins;
+  bit skip_pr, skip_btb;
   task GR_model();
     trans trans;
     predictor_update pr_trans;
@@ -68,22 +70,19 @@ class Checker extends uvm_subscriber #(trans);
         if(trans_q.size()>0) begin
             trans = trans_q.pop_front();
             wait(trans_properties[trans_pointer].valid);
+            $display("\n[CHECKER] @ %0t ps START trans=%0d",$time(),trans_pointer);
 
             // Update checker components: Gshare, BTB, RAS
-            // while ((pr_queue.size()>0)) begin 
-            //     pr_trans = pr_queue.pop_front();
-            //     if(pr_trans.valid_jump) begin
-            //         utils.gsh_update(pr_trans.orig_pc, pr_trans.jump_taken);
-            //         utils.btb_update(pr_trans.orig_pc, pr_trans.jump_address);
-            //     end
-            // end
+            skip_pr = trans_properties[trans_pointer].skip_last_cycle_pr_update;
+            skip_btb = trans_pointer>0 ? trans_properties[trans_pointer-1].skip_btb_update : 0;
+            $display("[CHECKER] @ %0t ps Reading updates from pr update queue (skip_pr=%b, skip_btb=%b)",$time(),skip_pr,skip_btb);
+            utils.get_pr_updates(skip_pr,skip_btb);
             if(trans_properties[trans_pointer].function_call) begin
                 utils.ras_push(trans_properties[trans_pointer].function_call_PC);
             end
-            if(trans_properties[trans_pointer].invalid_prediction) begin
-                utils.btb_invalidate(trans_properties[trans_pointer].restart_PC);
-            end
             
+            
+            $display("[CHECKER] @ %0t ps Running GR model",$time());
             // Calculate current pc and data_out
             current_pc_gr = fetch_second_ins ? next_pc_2 :next_pc_1;
             gr_packet_[0].pc = next_pc_1;
@@ -100,7 +99,9 @@ class Checker extends uvm_subscriber #(trans);
             
             valid_o_gr = ~trans_properties[trans_pointer].invalid_instruction & ~trans_properties[trans_pointer].invalid_prediction &
                          ~trans_properties[trans_pointer].function_return & (~gr_packet_[0].taken_branch | (gr_packet_[0].taken_branch & fetch_second_ins));
-        
+          
+            
+
             $display("[GR] @ %0t ps current_pc_gr[%0d]=%0d orig_1=%0d orig_2=%0d",$time(),trans_pointer,current_pc_gr,orig_1,orig_2);
             $display("[GR] @ %0t ps gr_packet_[%0d][0]=%p ",$time(),trans_pointer,gr_packet_[0]);
             $display("[GR] @ %0t ps gr_packet_[%0d][1]=%p ",$time(),trans_pointer,gr_packet_[1]);
@@ -119,7 +120,7 @@ class Checker extends uvm_subscriber #(trans);
 
 
             
-
+            $display("[CHECKER] @ %0t ps Calculating next pc's",$time());
             // Next pc calculation
             if(trans_properties[trans_pointer].invalid_instruction) begin
                 next_pc_1 = trans_properties[trans_pointer].restart_PC;
@@ -145,34 +146,45 @@ class Checker extends uvm_subscriber #(trans);
                 pc_b = gr_packet_[1].pc;
                 is_taken_a = gr_packet_[0].taken_branch;
                 is_taken_b = gr_packet_[1].taken_branch;
+                $display("%0t ps before fetch_second_ins=%b",$time(),fetch_second_ins);
                 if(is_taken_a) begin
                     if(!fetch_second_ins) begin
                         fetch_second_ins = 1;
                         next_pc_1 = pc_a;
                         next_pc_2 = utils.next_PC(pc_a);
+                        orig_2 = 0;
                     end else begin 
                         fetch_second_ins = 0;
                         if(is_taken_b) begin
                             next_pc_1 = utils.next_PC(pc_b);
                             next_pc_2 = next_pc_1 + 4;
+                            orig_2 = 1;
                         end else begin 
                             next_pc_1 = pc_b + 4;
                             next_pc_2 = next_pc_1 + 4;
+                            orig_2 = 2;
                         end
                     end
                 end else if(is_taken_b) begin
                     next_pc_1 = utils.next_PC(pc_b);
                     next_pc_2 = next_pc_1 + 4;
+                    orig_2 = 3;
                 end else begin 
                     next_pc_1 = pc_b + 4;
                     next_pc_2 = next_pc_1 + 4;
+                    orig_2 = 4;
                 end
-
+                orig_1 = 3;
+                $display("%0t ps after  fetch_second_ins=%b",$time(),fetch_second_ins);
             end // else normal operation
-
-            
             
 
+            if(trans_properties[trans_pointer].invalid_prediction) begin
+                $display("[CHECKER] @ %0t ps BTB invalidate: orig_pc=%0d",$time(),trans_properties[trans_pointer].restart_PC);
+                utils.btb_invalidate(trans_properties[trans_pointer].restart_PC);
+            end
+            
+            $display("[CHECKER] @ %0t ps END\n",$time());
             trans_pointer++;
       end
       @(posedge vif.clk);
@@ -203,7 +215,9 @@ class Checker extends uvm_subscriber #(trans);
 
   task monitor_trans_properties();
     // int trans_pointer = 0;
-    bit restart;
+    bit restart, half_access;
+    fetched_packet packet_a, packet_b;
+    predictor_update_extended pr_item;
     forever begin 
       restart = 0;
       // Restart properties
@@ -235,6 +249,24 @@ class Checker extends uvm_subscriber #(trans);
         trans_properties[trans_pointer_synced].flushed = 1;
         trans_properties[trans_pointer_synced].flush_PC = vif.correct_address;
         restart = 1;
+      end
+
+      // If predictor update came the last cycle before new pointer issued to Icache 
+      // then skip this update at the calculation of GR model for this transaction
+      if(vif.pr_update.valid_jump) begin
+        {packet_b,packet_a} = vif.data_out;
+        half_access = packet_a.taken_branch&&(!vif.valid_o)&&vif.Hit_cache;
+        if((vif.valid_o&vif.ready_in)||half_access) begin
+          trans_properties[trans_pointer_synced].skip_last_cycle_pr_update = 1;
+        end
+      end
+
+      // If invalid prediction and predictor update issued at the same cycle for the same orig pc then dont update BTB
+      if(vif.pr_update.valid_jump) begin
+        pr_item.pr_update = vif.pr_update;
+        pr_item.skip_btb = vif.invalid_prediction&&(vif.old_PC==vif.pr_update.orig_pc);
+        $display("@ %0t ps pr pushed:%p",$time(),pr_item);
+        utils.pr_queue.push_back(pr_item);
       end
 
       trans_properties[trans_pointer_synced].valid = 1;

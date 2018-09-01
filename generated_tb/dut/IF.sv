@@ -232,7 +232,7 @@ module IF #(
                 end else if(partial_access && partial_type== 1) begin
                     current_PC <= current_PC +2;
                     orig_dbg <= 8;
-                end else if(taken_branch_1) begin
+                end else if(taken_branch_1 && !half_access) begin
                     current_PC <= next_PC;
                     orig_dbg <= 9;
                 end else if (partial_access && partial_type== 2) begin

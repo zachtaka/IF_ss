@@ -11,7 +11,7 @@ class flush_driver extends uvm_component;
   int credits = 0;
   int pc_pointer = 0;
   int pc_1, pc_2;
-
+  fetched_packet packet_a, packet_b;
   function new(string name, uvm_component parent);
     super.new(name, parent);
   endfunction
@@ -26,8 +26,9 @@ class flush_driver extends uvm_component;
 
     forever begin 
       if(vif.valid_o && vif.ready_in) begin
-        pc_1 = vif.current_PC/4;
-        pc_2 = (vif.current_PC+4)/4;
+        {packet_b,packet_a} = vif.data_out;
+        pc_1 = packet_a.pc/4;
+        pc_2 = packet_b.pc/4;
         if(PC_Ins_mapping_array[pc_1].is_branch) begin
           credits++;
         end

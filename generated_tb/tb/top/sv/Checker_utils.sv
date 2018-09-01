@@ -8,6 +8,8 @@ class Checker_utils;
   btb_array_entry_s [BTB_SIZE-1:0] btb_array;
   // Return Address Stack (RAS)
   bit[PC_BITS-1:0] ras_queue [$:RAS_DEPTH-1];
+  // Predictor updates
+  predictor_update_extended pr_queue[$];
 
 
   // Initialize Checker components
@@ -51,7 +53,7 @@ class Checker_utils;
     gshare_array[line][counter_id*2+:2] = update_counter_value(is_taken, gshare_array[line][counter_id*2+:2]);
     //update gsh history
     gsh_history = {is_taken, gsh_history[GSH_HISTORY_BITS-1:1]};
-    $fdisplay(gs_fl,"[GSHARE] @ %0t ps updt counter, pc=%0d, line=%3d, cnt_id=%0d, is_taken=%0d, cnt_value_before=%0d, cnt_value_after=%0d history_after=%0d",$time(),pc,line,counter_id,is_taken,cnt_value_before,gshare_array[line][counter_id*2+:2],gsh_history);
+    $display("[GSHARE] @ %0t ps updt counter, pc=%0d, line=%3d, cnt_id=%0d, is_taken=%0d, cnt_value_before=%0d, cnt_value_after=%0d history_after=%0d",$time(),pc,line,counter_id,is_taken,cnt_value_before,gshare_array[line][counter_id*2+:2],gsh_history);
   endfunction 
 
   function bit gsh_read(input int pc);
@@ -65,7 +67,7 @@ class Checker_utils;
 
     is_taken = counter_value>1;
 
-    $fdisplay(gs_fl,"[GSHARE] @ %0t ps read counter, pc=%0d, line=%0d, cnt_id=%0d, is_taken=%0d, cnt_value=%0d, history=%0d",$time(),pc,line,counter_id,is_taken,counter_value,gsh_history);
+    $display("[GSHARE] @ %0t ps read counter, pc=%0d, line=%0d, cnt_id=%0d, is_taken=%0d, cnt_value=%0d, history=%0d",$time(),pc,line,counter_id,is_taken,counter_value,gsh_history);
     return is_taken;
   endfunction
 
@@ -74,7 +76,7 @@ class Checker_utils;
   */
   function void btb_update(input int orig_pc, input int target_pc);
     int line;
-
+    $display("[BTB update] @ %0t ps orig_pc=%0d, target_pc=%0d",$time(),orig_pc,target_pc);
     line = orig_pc[$clog2(BTB_SIZE):1];
     btb_array[line].orig_pc = orig_pc;
     btb_array[line].target_pc = target_pc;
@@ -88,8 +90,7 @@ class Checker_utils;
     line = pc[$clog2(BTB_SIZE):1];
     btb.target_pc = btb_array[line].target_pc;
     btb.hit = (pc==btb_array[line].orig_pc)&(btb_array[line].valid);
-    $fdisplay(btb_fl,"[BTB] pc=%0d, orig_pc=%0d, btb.valid=%b",pc,btb_array[line].orig_pc,btb_array[line].valid);
-    $fdisplay(btb_fl,"[BTB] @ %0t ps pc=%0d btb_hit=%b target_pc=%0d",$time(),pc,btb.hit,btb.target_pc);
+    $display("[BTB read] @ %0t ps pc=%0d orig_pc=%0d, target_pc=%0d, btb.valid=%b, btb_hit=%b",$time(),pc,btb_array[line].orig_pc,btb.target_pc,btb_array[line].valid,btb.hit);
     return btb;
   endfunction
 
@@ -124,10 +125,12 @@ class Checker_utils;
   // Combines Gshare and BTB to determine if input pc is taken
   function bit is_taken(input int pc);
     btb_read_s btb;
-    bit taken;
+    bit gshare_hit, btb_hit, taken;
 
+    gshare_hit = gsh_read(pc);
     btb = btb_read(pc);
-    taken = (gsh_read(pc)&btb.hit);
+    btb_hit = btb.hit;
+    taken = gshare_hit & btb_hit;
     return taken;
   endfunction 
 
@@ -142,6 +145,39 @@ class Checker_utils;
       new_pc = pc + 4;
     end
     return new_pc;
+  endfunction
+
+  
+
+  function void get_pr_updates(input bit skip_pr, input bit skip_btb);
+    predictor_update_extended pr_trans;
+
+    $display("[CHECKER] @ %0t ps total pr updates=%0d",$time(),pr_queue.size());
+    if(skip_pr&(pr_queue.size()>1)) begin
+
+      while(pr_queue.size()>1) begin 
+        pr_trans = pr_queue.pop_front();
+        $display("@ %0t ps pr popped:%p",$time(),pr_trans);
+        $display("[CHECKER] @ %0t ps pr update: orig_pc=%0d",$time(),pr_trans.pr_update.orig_pc);
+        if(pr_trans.pr_update.valid_jump) begin
+          gsh_update(pr_trans.pr_update.orig_pc, pr_trans.pr_update.jump_taken);
+          if(!pr_trans.skip_btb) btb_update(pr_trans.pr_update.orig_pc, pr_trans.pr_update.jump_address);
+        end
+      end
+
+    end else if(!skip_pr) begin 
+
+      while(pr_queue.size()>0) begin 
+        pr_trans = pr_queue.pop_front();
+        $display("@ %0t ps pr popped:%p",$time(),pr_trans);
+        $display("[CHECKER] @ %0t ps pr update: orig_pc=%0d",$time(),pr_trans.pr_update.orig_pc);
+        if(pr_trans.pr_update.valid_jump) begin
+          gsh_update(pr_trans.pr_update.orig_pc, pr_trans.pr_update.jump_taken);
+          if(!pr_trans.skip_btb) btb_update(pr_trans.pr_update.orig_pc, pr_trans.pr_update.jump_address);
+        end
+      end
+      
+    end
   endfunction
 
 endclass : Checker_utils

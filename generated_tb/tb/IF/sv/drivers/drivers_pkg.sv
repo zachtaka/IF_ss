@@ -1,5 +1,6 @@
 package drivers_pkg;
   import util_pkg::*;
+  monitor_DUT_s [TRANS_NUM-1:0] trans_properties;
   int trans_pointer_synced;
   typedef struct packed{
     bit is_branch;

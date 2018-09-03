@@ -48,7 +48,7 @@ class Checker extends uvm_subscriber #(trans);
   endfunction
 
 
-  monitor_DUT_s [TRANS_NUM-1:0] trans_properties;
+  
   int restart_PC, flush_PC;
   int pc_a, pc_b;
   
@@ -122,21 +122,26 @@ class Checker extends uvm_subscriber #(trans);
             
             $display("[CHECKER] @ %0t ps Calculating next pc's",$time());
             // Next pc calculation
-            if(trans_properties[trans_pointer].invalid_instruction) begin
-                next_pc_1 = trans_properties[trans_pointer].restart_PC;
+            if(trans_properties[trans_pointer].flushed) begin
+                next_pc_1 = trans_properties[trans_pointer].flush_PC;
                 next_pc_2 = next_pc_1 + 4;
                 fetch_second_ins = 0;
                 orig_1 = 0;
-            end else if(trans_properties[trans_pointer].invalid_prediction) begin
+            end else if(trans_properties[trans_pointer].invalid_instruction) begin
                 next_pc_1 = trans_properties[trans_pointer].restart_PC;
                 next_pc_2 = next_pc_1 + 4;
                 fetch_second_ins = 0;
                 orig_1 = 1;
+            end else if(trans_properties[trans_pointer].invalid_prediction) begin
+                next_pc_1 = trans_properties[trans_pointer].restart_PC;
+                next_pc_2 = next_pc_1 + 4;
+                fetch_second_ins = 0;
+                orig_1 = 2;
             end else if((trans_properties[trans_pointer].function_return)&&(utils.ras_queue.size()>0)) begin
                 next_pc_1 = utils.ras_pop() + 4;
                 next_pc_2 = next_pc_1 + 4;
                 fetch_second_ins = 0;
-                orig_1 = 2;
+                orig_1 = 3;
             end else begin 
                 // Normal operation
                 // 1) check if the PC address corresponds to a taken branch (from Gshare)
@@ -174,7 +179,7 @@ class Checker extends uvm_subscriber #(trans);
                     next_pc_2 = next_pc_1 + 4;
                     orig_2 = 4;
                 end
-                orig_1 = 3;
+                orig_1 = 4;
                 $display("%0t ps after  fetch_second_ins=%b",$time(),fetch_second_ins);
             end // else normal operation
             
@@ -250,6 +255,7 @@ class Checker extends uvm_subscriber #(trans);
         trans_properties[trans_pointer_synced].flush_PC = vif.correct_address;
         restart = 1;
       end
+      $display("[DEBUG] @ %0t ps trans_properties[%0d].flushed=%b",$time(),trans_pointer_synced,trans_properties[trans_pointer_synced].flushed);
 
       // If predictor update came the last cycle before new pointer issued to Icache 
       // then skip this update at the calculation of GR model for this transaction
@@ -268,8 +274,6 @@ class Checker extends uvm_subscriber #(trans);
         $display("@ %0t ps pr pushed:%p",$time(),pr_item);
         utils.pr_queue.push_back(pr_item);
       end
-
-      trans_properties[trans_pointer_synced].valid = 1;
 
       @(negedge vif.clk);
     end

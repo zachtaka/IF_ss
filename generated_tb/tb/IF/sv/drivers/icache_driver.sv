@@ -54,6 +54,7 @@ class icache_driver extends uvm_driver #(trans);
       end
 
       trans_properties[trans_pointer_synced].valid = 1;
+      $display("[DEBUG2]@ %0t ps trans_properties[%0d].valid=%b",$time(),trans_pointer_synced,trans_properties[trans_pointer_synced].valid);
       trans_pointer_synced++;
       seq_item_port.item_done();
     end

@@ -51,7 +51,7 @@ class Checker extends uvm_subscriber #(trans);
   
   int restart_PC, flush_PC;
   int pc_a, pc_b;
-  
+  bit pr_after_btb_inv;
   bit valid_o_gr;
   bit[1:0] is_taken;
   bit btb_hit;
@@ -184,12 +184,13 @@ class Checker extends uvm_subscriber #(trans);
             end // else normal operation
             
 
-            if(trans_properties[trans_pointer].invalid_prediction) begin
+            if(trans_properties[trans_pointer].invalid_prediction&&(!pr_after_btb_inv)) begin
                 $display("[CHECKER] @ %0t ps BTB invalidate: orig_pc=%0d",$time(),trans_properties[trans_pointer].restart_PC);
                 utils.btb_invalidate(trans_properties[trans_pointer].restart_PC);
             end
             
             $display("[CHECKER] @ %0t ps END\n",$time());
+            pr_after_btb_inv = 0;
             trans_pointer++;
       end
       @(posedge vif.clk);
@@ -225,6 +226,29 @@ class Checker extends uvm_subscriber #(trans);
     predictor_update_extended pr_item;
     forever begin 
       restart = 0;
+      // If predictor update came the last cycle before new pointer issued to Icache 
+      // then skip this update at the calculation of GR model for this transaction
+      if(vif.pr_update.valid_jump) begin
+        {packet_b,packet_a} = vif.data_out;
+        half_access = packet_a.taken_branch&&(!vif.valid_o)&&vif.Hit_cache;
+        if((vif.valid_o&vif.ready_in)||half_access) begin
+          trans_properties[trans_pointer_synced].skip_last_cycle_pr_update = 1;
+        end
+      end
+
+      // If invalid prediction and predictor update issued at the same cycle for the same orig pc then dont update BTB
+      if(vif.pr_update.valid_jump) begin
+        pr_item.pr_update = vif.pr_update;
+        pr_item.skip_btb = vif.invalid_prediction&&(vif.old_PC==vif.pr_update.orig_pc);
+        if(trans_properties[trans_pointer_synced].invalid_prediction) begin
+          if(pr_item.pr_update.orig_pc==trans_properties[trans_pointer_synced].restart_PC) begin
+            pr_after_btb_inv = 1;
+          end
+        end
+        $display("@ %0t ps pr pushed:%p",$time(),pr_item);
+        utils.pr_queue.push_back(pr_item);
+      end
+
       // Restart properties
       // Invalid instruction
       if(vif.invalid_instruction) begin 
@@ -257,23 +281,7 @@ class Checker extends uvm_subscriber #(trans);
       end
       $display("[DEBUG] @ %0t ps trans_properties[%0d].flushed=%b",$time(),trans_pointer_synced,trans_properties[trans_pointer_synced].flushed);
 
-      // If predictor update came the last cycle before new pointer issued to Icache 
-      // then skip this update at the calculation of GR model for this transaction
-      if(vif.pr_update.valid_jump) begin
-        {packet_b,packet_a} = vif.data_out;
-        half_access = packet_a.taken_branch&&(!vif.valid_o)&&vif.Hit_cache;
-        if((vif.valid_o&vif.ready_in)||half_access) begin
-          trans_properties[trans_pointer_synced].skip_last_cycle_pr_update = 1;
-        end
-      end
-
-      // If invalid prediction and predictor update issued at the same cycle for the same orig pc then dont update BTB
-      if(vif.pr_update.valid_jump) begin
-        pr_item.pr_update = vif.pr_update;
-        pr_item.skip_btb = vif.invalid_prediction&&(vif.old_PC==vif.pr_update.orig_pc);
-        $display("@ %0t ps pr pushed:%p",$time(),pr_item);
-        utils.pr_queue.push_back(pr_item);
-      end
+      
 
       @(negedge vif.clk);
     end

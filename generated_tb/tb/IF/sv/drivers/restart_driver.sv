@@ -10,7 +10,7 @@ class restart_driver extends uvm_component;
   bit invalid_Ins, invalid_prediction, function_call, function_return;
   int last_pc;
   int credits = 0;
-  int fnc_if  = 0; // functions in flight (functions called but not returned yet)
+  int functions_in_flight  = 0; // functions in flight (functions called but not returned yet)
 
   function new(string name, uvm_component parent);
     super.new(name, parent);
@@ -31,7 +31,7 @@ class restart_driver extends uvm_component;
       invalid_Ins         = ($urandom_range(0,99)<INVALID_INS_RATE)        &(credits>0);
       invalid_prediction  = ($urandom_range(0,99)<INVALID_PREDICTION_RATE) &(credits>0);
       function_call       = ($urandom_range(0,99)<FUNCTION_CALL_RATE)      &(credits>0);
-      function_return     = ($urandom_range(0,99)<FUNCTION_RETURN_RATE)    &(credits>0) &(fnc_if>0);
+      function_return     = ($urandom_range(0,99)<FUNCTION_RETURN_RATE)    &(credits>0) &(functions_in_flight>0);
 
       if(invalid_Ins) begin
         vif.invalid_instruction <= 1;
@@ -54,14 +54,14 @@ class restart_driver extends uvm_component;
         vif.is_jumpl <= 1;
         // set as old PC one of the two Instructions fetched at the ID stage
         vif.old_PC <= last_pc + $urandom_range(0,1)*4;
-        fnc_if ++;
+        functions_in_flight++;
       end else if(function_return) begin
         vif.invalid_instruction <= 0;
         vif.invalid_prediction <= 0;
         vif.is_return_in <= 1;
         vif.is_jumpl <= 0;
         vif.old_PC <= 0;
-        fnc_if --;
+        functions_in_flight--;
       end else begin 
         vif.invalid_instruction <= 0;
         vif.invalid_prediction <= 0;

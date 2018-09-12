@@ -5,7 +5,7 @@ import util_pkg::*;
 class trans extends uvm_sequence_item; 
   `uvm_object_utils(trans)
 
-  rand bit[INSTR_COUNT-1:0][INSTR_BITS-1:0] Ins_data;
+  rand bit[FETCH_WIDTH-1:0] data;
   // Just for debug, remove this later
   static int trans_counter_dbg;
   int trans_id_dbg;

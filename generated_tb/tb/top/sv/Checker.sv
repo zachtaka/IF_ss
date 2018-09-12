@@ -58,6 +58,10 @@ class Checker extends uvm_subscriber #(trans);
   btb_read_s btb_read, btb;
   bit fetch_second_ins;
   bit skip_pr, skip_btb;
+  bit [FETCH_WIDTH-1:0] partial_data_saved, partial_all_data;
+  bit partial_access_first_part, partial_access_second_part;
+  bit[1:0] partial_type, partial_type_saved;
+  bit[FETCH_WIDTH-1:0] instruction_out;
   task GR_model();
     trans trans;
     predictor_update pr_trans;
@@ -66,13 +70,22 @@ class Checker extends uvm_subscriber #(trans);
     bit is_taken_a, is_taken_b;
     int next_pc_1=0; 
     int next_pc_2=4;
+    bit restart_issued, first_Ins_partially_fetched, second_Ins_partially_fetched, flush_issued;
+    monitor_DUT_s trans_props;
     forever begin 
         if(trans_q.size()>0) begin
             trans = trans_q.pop_front();
             wait(trans_properties[trans_pointer].valid);
             $display("\n[CHECKER] @ %0t ps START trans=%0d",$time(),trans_pointer);
 
+            trans_props = trans_properties[trans_pointer];
             // Update checker components: Gshare, BTB, RAS
+            partial_access_first_part = trans_props.partial_access;
+            partial_type = trans_props.partial_type;
+            restart_issued = trans_props.invalid_instruction|trans_props.invalid_prediction;
+            flush_issued = trans_props.flushed;
+            first_Ins_partially_fetched = trans_props.partial_access && (trans_props.partial_type==1);
+            second_Ins_partially_fetched = (!fetch_second_ins && partial_access_first_part)||(fetch_second_ins && partial_access_first_part && partial_type==1);
             skip_pr = trans_properties[trans_pointer].skip_last_cycle_pr_update;
             skip_btb = trans_pointer>0 ? trans_properties[trans_pointer-1].skip_btb_update : 0;
             $display("[CHECKER] @ %0t ps Reading updates from pr update queue (skip_pr=%b, skip_btb=%b)",$time(),skip_pr,skip_btb);
@@ -83,18 +96,41 @@ class Checker extends uvm_subscriber #(trans);
             
             
             $display("[CHECKER] @ %0t ps Running GR model",$time());
-            // Calculate current pc and data_out
-            current_pc_gr = fetch_second_ins ? next_pc_2 :next_pc_1;
+            // Current pc GR
+            if(partial_access_second_part) begin
+              current_pc_gr = next_pc_2;
+              $display("current_pc_gr = %0d",current_pc_gr);
+            end else begin 
+              current_pc_gr = fetch_second_ins ? next_pc_2:next_pc_1;
+            end
+            // Packet pc GR
             gr_packet_[0].pc = next_pc_1;
             gr_packet_[1].pc = next_pc_2;
-            for (int i = 0; i < INSTR_COUNT; i++) begin
-                if(!fetch_second_ins) begin
-                    gr_packet_[i].data = trans.Ins_data[i];
-                    gr_packet_[i].taken_branch = utils.is_taken(gr_packet_[i].pc);
-                end else begin 
-                    gr_packet_[1].data = trans.Ins_data[0];
-                    gr_packet_[1].taken_branch = utils.is_taken(gr_packet_[1].pc);
+            // Packet data GR
+            if(fetch_second_ins) begin
+              gr_packet_[1].data = trans.data[FETCH_WIDTH/2-1:0];
+            end else begin 
+              if(partial_access_second_part) begin
+                if(partial_type_saved==1) begin
+                  instruction_out = {trans.data[FETCH_WIDTH*3/4-1:0], partial_data_saved[FETCH_WIDTH/4-1:0]};
+                  $display("instruction_out=%0d",instruction_out);
+                end else if(partial_type_saved==2) begin 
+                  instruction_out = {trans.data[FETCH_WIDTH/2-1:0], partial_data_saved[FETCH_WIDTH/2-1:0]};
+                end else if(partial_type_saved==3) begin
+                  instruction_out = {trans.data[FETCH_WIDTH/4-1:0], partial_data_saved[FETCH_WIDTH*3/4-1:0]};
                 end
+                $display("gr_ins_1_4=%0d gr_ins_2_4=%0d gr_ins_3_4=%0d gr_ins_4_4=%0d",instruction_out[15:0],instruction_out[31:16],instruction_out[47:32],instruction_out[63:48]);
+                {gr_packet_[1].data,gr_packet_[0].data} = instruction_out;
+              end else begin 
+                {gr_packet_[1].data,gr_packet_[0].data} = trans.data;
+              end
+            end
+            // Packet taken branch GR
+            if((!fetch_second_ins)&&(!partial_access_second_part)) begin
+                gr_packet_[0].taken_branch = utils.is_taken(gr_packet_[0].pc);
+                gr_packet_[1].taken_branch = utils.is_taken(gr_packet_[1].pc);
+            end else begin 
+                gr_packet_[1].taken_branch = utils.is_taken(gr_packet_[1].pc);
             end
             
             valid_o_gr = ~trans_properties[trans_pointer].invalid_instruction & ~trans_properties[trans_pointer].invalid_prediction &
@@ -117,7 +153,19 @@ class Checker extends uvm_subscriber #(trans);
             gr_array[trans_pointer].valid_o_gr = valid_o_gr;
 
 
-
+            // Partial access
+            // Second part
+            // if(partial_access_second_part) begin
+            //   if(trans_properties[trans_pointer].partial_type==1) begin
+            //     partial_all_data = {partial_data_saved[FETCH_WIDTH/4-1:0],trans.data[FETCH_WIDTH*3/4-1:0]};
+            //   end else if(trans_properties[trans_pointer].partial_type==2) begin 
+            //     partial_all_data = {partial_data_saved[FETCH_WIDTH/2-1:0],trans.data[FETCH_WIDTH/2-1:0]};
+            //   end else if(trans_properties[trans_pointer].partial_type==3) begin
+            //     partial_all_data = {partial_data_saved[FETCH_WIDTH*3/4-1:0],trans.data[FETCH_WIDTH/4-1:0]};
+            //   end
+            //   partial_access_second_part = 0;
+            // end
+            
 
             
             $display("[CHECKER] @ %0t ps Calculating next pc's",$time());
@@ -151,8 +199,8 @@ class Checker extends uvm_subscriber #(trans);
                 pc_b = gr_packet_[1].pc;
                 is_taken_a = gr_packet_[0].taken_branch;
                 is_taken_b = gr_packet_[1].taken_branch;
-                $display("%0t ps before fetch_second_ins=%b",$time(),fetch_second_ins);
-                if(is_taken_a) begin
+                $display("%0t ps before fetch_second_ins=%b first_Ins_partially_fetched=%b",$time(),fetch_second_ins,first_Ins_partially_fetched);
+                if((is_taken_a)&&(!first_Ins_partially_fetched)) begin
                     if(!fetch_second_ins) begin
                         fetch_second_ins = 1;
                         next_pc_1 = pc_a;
@@ -170,20 +218,61 @@ class Checker extends uvm_subscriber #(trans);
                             orig_2 = 2;
                         end
                     end
-                end else if(is_taken_b) begin
+                end else if((is_taken_b)&&(!second_Ins_partially_fetched)) begin
                     next_pc_1 = utils.next_PC(pc_b);
                     next_pc_2 = next_pc_1 + 4;
                     orig_2 = 3;
                 end else begin 
-                    next_pc_1 = pc_b + 4;
-                    next_pc_2 = next_pc_1 + 4;
-                    orig_2 = 4;
+                    if(partial_access_first_part) begin
+                      next_pc_1 = next_pc_1;
+                      if(partial_type==1) begin
+                        next_pc_2 = pc_b - 2;
+                        orig_2 = 4;
+                      end else if(partial_type==2) begin
+                        next_pc_2 = pc_b;
+                        orig_2 = 5;
+                      end else if(partial_type==3) begin
+                        next_pc_2 = pc_b + 2;
+                        orig_2 = 6;
+                      end 
+                    end else if(partial_access_second_part) begin
+                      if(partial_type_saved==1) begin
+                        next_pc_1 = pc_b + 6;
+                        orig_2 = 7;
+                      end else if(partial_type_saved==2) begin
+                        next_pc_1 = pc_b + 4;
+                        orig_2 = 8;
+                      end else if(partial_type_saved==3) begin
+                        next_pc_1 = pc_b + 2;
+                        orig_2 = 9;
+                      end 
+                      next_pc_2 = next_pc_1 + 4;
+                    end else begin 
+                      next_pc_1 = pc_b + 4;
+                      next_pc_2 = next_pc_1 + 4;
+                      $display("@ %0t ps next_pc_1=%0d next_pc_2=%0d",$time(),next_pc_1,next_pc_2);
+                      orig_2 = 10;
+                    end
                 end
+                      
                 orig_1 = 4;
-                $display("%0t ps after  fetch_second_ins=%b",$time(),fetch_second_ins);
+                $display("%0t ps after  fetch_second_ins=%b nextpc origins: %0d %0d",$time(),fetch_second_ins,orig_1,orig_2);
             end // else normal operation
             
-
+            if(partial_access_second_part) partial_access_second_part = 0;
+            // First part
+            if((partial_access_first_part)&&(!restart_issued)&&(!flush_issued)) begin
+              partial_type_saved= trans_properties[trans_pointer].partial_type;
+              if(partial_type==1) begin
+                partial_data_saved = {{48{1'b0}},trans.data[FETCH_WIDTH/4-1:0]};
+                $display("partial_data_saved=%0d",partial_data_saved);
+              end else if(partial_type==2) begin 
+                partial_data_saved = {{32{1'b0}},trans.data[FETCH_WIDTH/2-1:0]};
+              end else if(partial_type==3) begin
+                partial_data_saved = {{16{1'b0}},trans.data[FETCH_WIDTH*3/4-1:0]};
+              end
+              if(second_Ins_partially_fetched&&(!fetch_second_ins)) partial_access_second_part = 1;
+            end
             if(trans_properties[trans_pointer].invalid_prediction&&(!pr_after_btb_inv)) begin
                 $display("[CHECKER] @ %0t ps BTB invalidate: orig_pc=%0d",$time(),trans_properties[trans_pointer].restart_PC);
                 utils.btb_invalidate(trans_properties[trans_pointer].restart_PC);
@@ -221,7 +310,7 @@ class Checker extends uvm_subscriber #(trans);
 
   task monitor_trans_properties();
     // int trans_pointer = 0;
-    bit restart, half_access;
+    bit restart, half_access, partial_access;
     fetched_packet packet_a, packet_b;
     predictor_update_extended pr_item;
     forever begin 
@@ -231,7 +320,8 @@ class Checker extends uvm_subscriber #(trans);
       if(vif.pr_update.valid_jump) begin
         {packet_b,packet_a} = vif.data_out;
         half_access = packet_a.taken_branch&&(!vif.valid_o)&&vif.Hit_cache;
-        if((vif.valid_o&vif.ready_in)||half_access) begin
+        partial_access = vif.partial_access&&vif.Hit_cache;
+        if((vif.valid_o&vif.ready_in)||half_access||partial_access) begin
           trans_properties[trans_pointer_synced].skip_last_cycle_pr_update = 1;
         end
       end
@@ -279,8 +369,13 @@ class Checker extends uvm_subscriber #(trans);
         trans_properties[trans_pointer_synced].flush_PC = vif.correct_address;
         restart = 1;
       end
-      $display("[DEBUG] @ %0t ps trans_properties[%0d].flushed=%b",$time(),trans_pointer_synced,trans_properties[trans_pointer_synced].flushed);
 
+
+      // Partial access properties
+      if(vif.partial_access) begin
+        trans_properties[trans_pointer_synced].partial_access = 1;
+        trans_properties[trans_pointer_synced].partial_type   = vif.partial_type;
+      end
       
 
       @(negedge vif.clk);

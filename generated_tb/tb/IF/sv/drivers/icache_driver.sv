@@ -21,6 +21,7 @@ class icache_driver extends uvm_driver #(trans);
 
 
   task run_phase(uvm_phase phase);
+    bit partial_access_second_part;
 
     reset();
     wait(vif.rst_n);
@@ -29,23 +30,35 @@ class icache_driver extends uvm_driver #(trans);
       seq_item_port.get_next_item(req);
       vif.trans_id_dbg <= req.trans_id_dbg;
       $display("@ %0t ps trans_pointer_synced=%0d",$time(),trans_pointer_synced);
+      // Miss
       while($urandom_range(0,99)<ICACHE_MISS_RATE) begin
-        // Miss
         vif.Hit_cache <= 0;
         vif.Miss <= 1;
         vif.partial_access <= 0;
         vif.partial_type <= 0;
-        // vif.fetched_data <= $random;
         @(posedge vif.clk);
       end
       icache_port.write(req);
 
       // Hit
-      vif.Hit_cache <= 1;
-      vif.Miss <= 0;
-      vif.partial_access <= 0;
-      vif.partial_type <= 0;
-      vif.fetched_data <= req.Ins_data;
+      if(($urandom_range(0,99)<ICACHE_PARTIAL_ACCESS_RATE)&&(!partial_access_second_part)) begin
+        // New partial access issue
+        vif.Hit_cache <= 1;
+        vif.Miss <= 0;
+        vif.partial_access <= 1;
+        vif.partial_type <= 2; // #Todo change it again to 1-3 when bug 8 is fixed
+        vif.fetched_data <= req.data;
+        partial_access_second_part = 1;
+      end else begin 
+        // Normal operation
+        vif.Hit_cache <= 1;
+        vif.Miss <= 0;
+        vif.partial_access <= 0;
+        vif.partial_type <= 0;
+        vif.fetched_data <= req.data;
+        partial_access_second_part = 0;
+      end
+
 
       @(posedge vif.clk);
 

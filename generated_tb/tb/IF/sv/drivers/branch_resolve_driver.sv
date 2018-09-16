@@ -27,14 +27,16 @@ class branch_resolve_driver extends uvm_component;
     join_none
   endtask
 
+  fetched_packet packet_a, packet_b;
   task pr_driver();
     wait(vif.rst_n);
     forever begin 
       // credits counter = Ins passed through IF stage to ID stage
       if(vif.valid_o && vif.ready_in) begin
+        {packet_b,packet_a} = vif.data_out;
         credits = credits + INSTR_COUNT;
-        pc_1 = vif.current_PC;
-        pc_2 = vif.current_PC + 4;
+        pc_1 = packet_a.pc;
+        pc_2 = packet_b.pc;
         pc_pointers.push_back(pc_1);
         pc_pointers.push_back(pc_2);
       end

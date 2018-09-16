@@ -82,7 +82,7 @@ class Checker extends uvm_subscriber #(trans);
             // Update checker components: Gshare, BTB, RAS
             partial_access_first_part = trans_props.partial_access;
             partial_type = trans_props.partial_type;
-            restart_issued = trans_props.invalid_instruction|trans_props.invalid_prediction;
+            restart_issued = trans_props.invalid_instruction|trans_props.invalid_prediction|trans_props.function_return;
             flush_issued = trans_props.flushed;
             first_Ins_partially_fetched = trans_props.partial_access && (trans_props.partial_type==1);
             second_Ins_partially_fetched = (!fetch_second_ins && partial_access_first_part)||(fetch_second_ins && partial_access_first_part && partial_type==1);

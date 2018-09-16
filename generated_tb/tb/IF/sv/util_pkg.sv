@@ -11,7 +11,7 @@ parameter int GSH_SIZE = 256;
 parameter int BTB_SIZE = 256;
 
 /*----------- TB simulation parameters -----------*/
-parameter int TRANS_NUM = 10000; // Number of transactions that will be sent from to sequencer to the icache driver
+parameter int TRANS_NUM = 100000; // Number of transactions that will be sent from to sequencer to the icache driver
 // Ins mapping parameters 
 parameter int INS_BRANCH_RATE = 40; // Rate of branch instructions
 parameter int BACK_BRANCH_RATE = 50; // Rate of branch instructions that will be considered as backwards branch
@@ -25,10 +25,10 @@ parameter int ID_NOT_READY_RATE = 0; // The rate of stall cycle injection from t
 // Restart parameters
 parameter int INVALID_INS_RATE = 30; 
 parameter int INVALID_PREDICTION_RATE = 30;
-parameter int FUNCTION_CALL_RATE = 0;
+parameter int FUNCTION_CALL_RATE = 30;
 parameter int FUNCTION_RETURN_RATE = 0;
 // Flush parameter
-parameter int FLUSH_RATE = 5;
+parameter int FLUSH_RATE = 2;
 
 
 // TB structure parameters

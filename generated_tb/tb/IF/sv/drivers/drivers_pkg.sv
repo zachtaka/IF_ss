@@ -35,5 +35,15 @@ package drivers_pkg;
 	endfunction 
 
 
+  function bit branch(input int pc_1, input int pc_2);
+    bit[1:0] is_branch;
+
+    is_branch[0] = PC_Ins_mapping_array[pc_1/4].is_branch;
+    is_branch[1] = PC_Ins_mapping_array[pc_2/4].is_branch;
+
+    return |is_branch;
+  endfunction
+
+
 
 endpackage

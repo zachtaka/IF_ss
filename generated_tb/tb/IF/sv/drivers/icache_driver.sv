@@ -47,6 +47,7 @@ class icache_driver extends uvm_driver #(trans);
         vif.Miss <= 0;
         vif.partial_access <= 1;
         vif.partial_type <= 2; // #Todo change it again to 1-3 when bug 8 is fixed
+        // vif.partial_type <= $urandom_range(1,3);
         vif.fetched_data <= req.data;
         partial_access_second_part = 1;
       end else begin 

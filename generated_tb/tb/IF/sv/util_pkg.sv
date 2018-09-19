@@ -11,14 +11,14 @@ parameter int GSH_SIZE = 256;
 parameter int BTB_SIZE = 256;
 
 /*----------- TB simulation parameters -----------*/
-parameter int TRANS_NUM = 100000; // Number of transactions that will be sent from to sequencer to the icache driver
+parameter int TRANS_NUM = 5000; // Number of transactions that will be sent from to sequencer to the icache driver
 // Ins mapping parameters 
 parameter int INS_BRANCH_RATE = 40; // Rate of branch instructions
 parameter int BACK_BRANCH_RATE = 50; // Rate of branch instructions that will be considered as backwards branch
 parameter int BACK_BRANCH_IS_TAKEN_RATE = 80;
 parameter int FORW_BRANCH_IS_TAKEN_RATE = 50;
 // Icache parameters
-parameter int ICACHE_MISS_RATE = 20; // The rate of misses from the icache driver, valid range:[0,99]
+parameter int ICACHE_MISS_RATE = 25; // The rate of misses from the icache driver, valid range:[0,99]
 parameter int ICACHE_PARTIAL_ACCESS_RATE = 20; // The rate of partial access from icache driver, valid range:[0,100]
 // ID parameters
 parameter int ID_NOT_READY_RATE = 0; // The rate of stall cycle injection from the next pipeline stage, valid range:[0,99]
@@ -78,6 +78,7 @@ typedef struct packed {
 
   bit skip_last_cycle_pr_update;
   bit skip_btb_update;
+  bit pr_after_btb_inv;
 
   bit partial_access;
   bit[1:0] partial_type;

@@ -6,7 +6,6 @@ import drivers_pkg::*;
 class branch_resolve_driver extends uvm_component;
   `uvm_component_utils(branch_resolve_driver)
 
-  uvm_analysis_port #(predictor_update) pr_update_port;
   predictor_update pr_item;
 
   virtual IF_if vif;
@@ -17,14 +16,10 @@ class branch_resolve_driver extends uvm_component;
 
   function new(string name, uvm_component parent);
     super.new(name, parent);
-    pr_update_port = new("pr_update_port",this);
   endfunction
 
   task run_phase(uvm_phase phase);
-    fork 
-      monitor_pr();
-      pr_driver();
-    join_none
+    pr_driver();
   endtask
 
   fetched_packet packet_a, packet_b;
@@ -70,18 +65,6 @@ class branch_resolve_driver extends uvm_component;
         vif.pr_update.jump_taken <= 0;
       end
       @(posedge vif.clk);
-    end
-  endtask
-
-  task monitor_pr();
-    forever begin 
-      // If valid jump broadcast to checker
-      if(vif.pr_update.valid_jump) begin
-        pr_item = vif.pr_update;
-        // if(pr_item.orig_pc==628) $display("[PR DRIVER] @ %0t ps sent pr_update=%p",$time(),pr_item);
-        pr_update_port.write(pr_item);
-      end
-      @(negedge vif.clk);
     end
   endtask
 
